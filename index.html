@@ -5,115 +5,155 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Business Vocab Pro</title>
     <style>
-        :root { --primary: #007bff; --success: #28a745; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; color: #333; }
+        :root { --primary: #007bff; --success: #28a745; --bg: #f8f9fa; --error: #dc3545; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
         
-        /* Progress Bar */
-        .progress-container { width: 100%; max-width: 400px; background: #ddd; height: 10px; border-radius: 5px; margin-bottom: 20px; }
-        #progress-fill { width: 0%; height: 100%; background: var(--success); border-radius: 5px; transition: 0.3s; }
+        /* Navigation */
+        .nav { margin-bottom: 20px; display: flex; gap: 10px; }
+        .nav button { background: #ddd; color: #333; box-shadow: none; }
+        .nav button.active { background: var(--primary); color: white; }
 
-        /* Card Styling */
+        /* General Styles */
+        .hidden { display: none !important; }
         .card-container { width: 90vw; max-width: 400px; height: 280px; perspective: 1000px; margin-bottom: 20px; cursor: pointer; }
         .card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
         .is-flipped { transform: rotateY(180deg); }
         .card-front, .card-back {
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 30px; border-radius: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); border: 2px solid white; box-sizing: border-box;
+            display: flex; align-items: center; justify-content: center;
+            padding: 30px; border-radius: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); box-sizing: border-box;
         }
-        .card-front { background: white; color: var(--primary); font-size: 32px; font-weight: bold; }
-        .card-back { background: var(--primary); color: white; transform: rotateY(180deg); font-size: 22px; line-height: 1.4; }
+        .card-front { background: white; color: var(--primary); font-size: 28px; font-weight: bold; border: 2px solid var(--primary); }
+        .card-back { background: var(--primary); color: white; transform: rotateY(180deg); font-size: 20px; }
 
-        /* Controls */
-        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-        button { padding: 12px 24px; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        button:active { transform: scale(0.95); }
-        .btn-next { background: var(--primary); color: white; }
-        .btn-shuffle { background: #6c757d; color: white; }
-        
-        #counter { margin-top: 10px; font-weight: bold; color: #666; }
+        /* Matching Game Grid */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 500px; width: 100%; }
+        .tile {
+            padding: 15px; background: white; border: 2px solid #ddd; border-radius: 10px;
+            cursor: pointer; text-align: center; font-size: 14px; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; min-height: 60px;
+        }
+        .tile.selected { border-color: var(--primary); background: #e7f1ff; }
+        .tile.matched { visibility: hidden; pointer-events: none; }
+
+        button { padding: 12px 24px; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; transition: 0.2s; background: var(--primary); color: white; }
     </style>
 </head>
 <body>
 
-    <h2 id="status">Loading Vocabulary...</h2>
-
-    <div class="progress-container">
-        <div id="progress-fill"></div>
+    <div class="nav">
+        <button id="btn-flash" class="active" onclick="showMode('flash')">Flashcards</button>
+        <button id="btn-match" onclick="showMode('match')">Matching Game</button>
     </div>
 
-    <div class="card-container" onclick="flipCard()">
-        <div class="card-inner" id="flashcard">
-            <div class="card-front" id="word-display">...</div>
-            <div class="card-back" id="definition-display">...</div>
+    <div id="flash-mode">
+        <div class="card-container" onclick="flipCard()">
+            <div class="card-inner" id="flashcard">
+                <div class="card-front" id="word-display">Loading...</div>
+                <div class="card-back" id="definition-display">...</div>
+            </div>
         </div>
+        <button onclick="nextWord()">Next Word →</button>
     </div>
 
-    <div id="counter">Word 0 of 0</div>
-
-    <div class="btn-group">
-        <button class="btn-shuffle" onclick="shuffleCards()">Shuffle 🔀</button>
-        <button class="btn-next" onclick="nextWord()">Next Word →</button>
+    <div id="match-mode" class="hidden">
+        <h3>Match the pairs!</h3>
+        <div class="grid" id="game-grid"></div>
+        <button onclick="setupMatchingGame()" style="margin-top:20px; background:#6c757d;">Reset Game</button>
     </div>
 
     <script>
-        // YOUR GOOGLE SHEET LINK
         const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS--AB3xRXgEY6Pw6_KCz43YUo2cbBZskowBoUNZ7ruPS9N2dAT-4fvDaJPYGllWWNjSSfMZ4VspCGU/pub?output=csv";
-
         let vocab = [];
         let index = 0;
+        let selectedTile = null;
 
         async function init() {
             try {
-                const response = await fetch(sheetURL);
-                const text = await response.text();
+                const res = await fetch(sheetURL);
+                const text = await res.text();
                 const rows = text.split(/\r?\n/);
+                vocab = rows.map(r => {
+                    const c = r.split(",");
+                    return { term: c[0]?.trim(), def: c[1]?.trim() };
+                }).filter(i => i.term && i.def && i.term.toLowerCase() !== "term");
                 
-                vocab = rows.map(row => {
-                    const cols = row.split(",");
-                    return { term: cols[0]?.trim(), def: cols[1]?.trim() };
-                }).filter(item => item.term && item.def && item.term.toLowerCase() !== "term");
-
-                if (vocab.length > 0) {
-                    document.getElementById('status').innerText = "Flashcards Ready!";
-                    updateUI();
-                }
-            } catch (err) {
-                document.getElementById('status').innerText = "⚠️ Error loading sheet";
-            }
+                updateFlashcard();
+            } catch (e) { console.error(e); }
         }
 
-        function updateUI() {
-            const card = document.getElementById('flashcard');
-            card.classList.remove('is-flipped');
-            
+        // MODE SWITCHING
+        function showMode(mode) {
+            document.getElementById('flash-mode').classList.toggle('hidden', mode !== 'flash');
+            document.getElementById('match-mode').classList.toggle('hidden', mode !== 'match');
+            document.getElementById('btn-flash').classList.toggle('active', mode === 'flash');
+            document.getElementById('btn-match').classList.toggle('active', mode === 'match');
+            if (mode === 'match') setupMatchingGame();
+        }
+
+        // FLASHCARD LOGIC
+        function flipCard() { document.getElementById('flashcard').classList.toggle('is-flipped'); }
+        function nextWord() {
+            index = (index + 1) % vocab.length;
+            updateFlashcard();
+        }
+        function updateFlashcard() {
+            document.getElementById('flashcard').classList.remove('is-flipped');
             setTimeout(() => {
                 document.getElementById('word-display').innerText = vocab[index].term;
                 document.getElementById('definition-display').innerText = vocab[index].def;
-                
-                // Update Counter
-                document.getElementById('counter').innerText = `Word ${index + 1} of ${vocab.length}`;
-                
-                // Update Progress Bar
-                const percent = ((index + 1) / vocab.length) * 100;
-                document.getElementById('progress-fill').style.width = percent + "%";
             }, 200);
         }
 
-        function nextWord() {
-            index = (index + 1) % vocab.length;
-            updateUI();
+        // MATCHING GAME LOGIC
+        function setupMatchingGame() {
+            const grid = document.getElementById('game-grid');
+            grid.innerHTML = '';
+            selectedTile = null;
+
+            // Take 4 random words
+            let pool = [...vocab].sort(() => 0.5 - Math.random()).slice(0, 4);
+            let tiles = [];
+
+            pool.forEach((item, i) => {
+                tiles.push({ text: item.term, pairId: i, type: 'term' });
+                tiles.push({ text: item.def, pairId: i, type: 'def' });
+            });
+
+            tiles.sort(() => 0.5 - Math.random());
+
+            tiles.forEach(tileData => {
+                const div = document.createElement('div');
+                div.className = 'tile';
+                div.innerText = tileData.text;
+                div.onclick = () => handleTileClick(div, tileData);
+                grid.appendChild(div);
+            });
         }
 
-        function shuffleCards() {
-            vocab.sort(() => Math.random() - 0.5);
-            index = 0;
-            updateUI();
-            alert("Cards Shuffled!");
-        }
+        function handleTileClick(div, data) {
+            if (div.classList.contains('matched')) return;
 
-        function flipCard() {
-            document.getElementById('flashcard').classList.toggle('is-flipped');
+            if (!selectedTile) {
+                selectedTile = { div, data };
+                div.classList.add('selected');
+            } else {
+                if (selectedTile.div === div) {
+                    div.classList.remove('selected');
+                    selectedTile = null;
+                    return;
+                }
+
+                if (selectedTile.data.pairId === data.pairId && selectedTile.data.type !== data.type) {
+                    // It's a match!
+                    div.classList.add('matched');
+                    selectedTile.div.classList.add('matched');
+                } else {
+                    // Not a match
+                    selectedTile.div.classList.remove('selected');
+                }
+                selectedTile = null;
+            }
         }
 
         init();
