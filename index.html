@@ -16,9 +16,10 @@
         .login-box { background: white; padding: 30px; border-radius: 15px; color: var(--dark); width: 80%; max-width: 300px; text-align: center; }
         .login-box input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
 
-        /* HEADER & SELECTOR */
+        /* HEADER & STATS */
         .setup-area { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 90%; max-width: 400px; margin-bottom: 15px; text-align: center; }
         select { width: 100%; padding: 10px; border-radius: 8px; border: 2px solid var(--primary); font-size: 16px; margin-top: 5px; }
+        .stats-text { font-size: 13px; color: #666; margin-top: 10px; font-weight: bold; }
 
         .nav { margin-bottom: 15px; display: flex; gap: 8px; }
         .nav button { background: #dee2e6; color: var(--dark); border-radius: 20px; padding: 8px 18px; cursor: pointer; border: none; font-weight: bold; }
@@ -26,8 +27,8 @@
 
         .hidden { display: none !important; }
         
-        /* CARD & AUDIO */
-        .card-container { width: 90vw; max-width: 400px; height: 260px; perspective: 1000px; cursor: pointer; margin-bottom: 15px; position: relative; }
+        /* FLASHCARD */
+        .card-container { width: 90vw; max-width: 400px; height: 260px; perspective: 1000px; cursor: pointer; margin-bottom: 15px; }
         .card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
         .is-flipped { transform: rotateY(180deg); }
         .card-front, .card-back {
@@ -36,14 +37,16 @@
             padding: 25px; border-radius: 15px; box-shadow: 0 6px 12px rgba(0,0,0,0.1); border: 2px solid #fff; box-sizing: border-box;
         }
         .card-front { background: white; color: var(--primary); font-size: 26px; font-weight: bold; }
-        .card-back { background: var(--primary); color: white; transform: rotateY(180deg); font-size: 18px; }
+        .card-back { background: var(--primary); color: white; transform: rotateY(180deg); font-size: 18px; text-align: center; }
         
-        .speaker-btn { background: #eee; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; margin-top: 15px; font-size: 20px; transition: 0.2s; }
-        .speaker-btn:hover { background: #ddd; }
+        .speaker-btn { background: #eee; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; margin-top: 15px; font-size: 20px; }
 
-        .btn { padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; flex: 1; }
+        /* BUTTONS */
+        .controls { display: flex; gap: 10px; justify-content: center; width: 100%; max-width: 400px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; }
         .btn-next { background: var(--primary); }
-        .btn-shuffle { background: #6c757d; }
+        .btn-master { background: var(--success); }
+        .btn-reset { background: transparent; color: #999; font-size: 11px; margin-top: 10px; text-decoration: underline; }
 
         /* GRID */
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 500px; width: 100%; }
@@ -62,21 +65,23 @@
     <div id="login-overlay">
         <div class="login-box">
             <h2>Student Login</h2>
-            <input type="text" id="login-id" placeholder="Enter your Name (e.g. john)">
+            <input type="text" id="login-id" placeholder="Enter Name (e.g. vlada)">
             <button class="btn btn-next" style="width:100%" onclick="handleLogin()">Start Learning</button>
-            <p id="login-error" style="color:red; font-size:12px; margin-top:10px;" class="hidden">Student not found.</p>
+            <p id="login-error" style="color:red; font-size:12px; margin-top:10px;" class="hidden">Name not in database.</p>
         </div>
     </div>
 
     <div id="success-overlay" class="hidden">
         <h1>🎉 Excellent!</h1>
-        <p>You matched everything correctly.</p>
-        <button class="btn" style="background: white; color: var(--success); max-width: 200px;" onclick="closeSuccess()">Continue</button>
+        <p>You matched all current words!</p>
+        <button class="btn" style="background: white; color: var(--success); max-width: 200px;" onclick="closeSuccess()">Play Again</button>
     </div>
 
     <div class="setup-area">
-        <h3 id="display-name">Welcome</h3>
+        <h3 id="display-name" style="margin:0">Welcome</h3>
         <select id="lesson-select" onchange="changeLesson(this.value)"></select>
+        <div id="progress-stats" class="stats-text">Words left: 0</div>
+        <button class="btn-reset" onclick="resetMastery()">Reset Mastered Words 🔄</button>
     </div>
 
     <div class="nav">
@@ -94,52 +99,59 @@
                 <div class="card-back" id="definition-display">Definition</div>
             </div>
         </div>
-        <div style="display:flex; gap:10px; width:100%; max-width:400px;">
-            <button class="btn btn-shuffle" onclick="shuffleCurrentLesson()">Shuffle 🔀</button>
+        <div class="controls">
+            <button class="btn btn-master" onclick="markAsMastered()">Mastered ✅</button>
             <button class="btn btn-next" onclick="nextWord()">Next →</button>
         </div>
     </div>
 
     <div id="match-mode" class="hidden">
         <div class="grid" id="game-grid"></div>
-        <button class="btn btn-shuffle" style="margin-top:15px; width:100%; max-width:400px;" onclick="setupMatchingGame()">Restart Game</button>
+        <button class="btn" style="margin-top:15px; width:100%; max-width:400px; background:#6c757d" onclick="setupMatchingGame()">New Game</button>
     </div>
 
     <script>
-        const studentDatabase = {
+        // --- 1. STUDENT DATABASE ---
+        // ADD YOUR NEW LINKS HERE
+       const studentDatabase = {
             "john": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS--AB3xRXgEY6Pw6_KCz43YUo2cbBZskowBoUNZ7ruPS9N2dAT-4fvDaJPYGllWWNjSSfMZ4VspCGU/pub?output=csv",
             "vlada": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS--AB3xRXgEY6Pw6_KCz43YUo2cbBZskowBoUNZ7ruPS9N2dAT-4fvDaJPYGllWWNjSSfMZ4VspCGU/pub?gid=997411355&single=true&output=csv",
             "karina": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS--AB3xRXgEY6Pw6_KCz43YUo2cbBZskowBoUNZ7ruPS9N2dAT-4fvDaJPYGllWWNjSSfMZ4VspCGU/pub?output=csv",
             "gorgeous": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS--AB3xRXgEY6Pw6_KCz43YUo2cbBZskowBoUNZ7ruPS9N2dAT-4fvDaJPYGllWWNjSSfMZ4VspCGU/pub?gid=332854845&single=true&output=csv",
         };
 
-        let allData = {}; 
+        let rawData = {}; 
         let currentLessonName = "";
         let currentIndex = 0;
-        let selectedTile = null;
-        let matchesFound = 0;
-        let targetMatches = 0;
+        let activeStudent = "";
+        let masteredList = [];
 
-        // 1. LOGIN LOGIC
+        // --- 2. LOGIN & STORAGE ---
         function handleLogin() {
             const id = document.getElementById('login-id').value.toLowerCase().trim();
             if (studentDatabase[id]) {
+                activeStudent = id;
                 document.getElementById('login-overlay').classList.add('hidden');
-                init(id);
+                
+                // Load this specific student's mastered words
+                const saved = localStorage.getItem('mastered_' + activeStudent);
+                masteredList = saved ? JSON.parse(saved) : [];
+                
+                init();
             } else {
                 document.getElementById('login-error').classList.remove('hidden');
             }
         }
 
-        async function init(studentId) {
-            const sheetURL = studentDatabase[studentId];
-            document.getElementById('display-name').innerText = "Hello, " + studentId.charAt(0).toUpperCase() + studentId.slice(1);
+        async function init() {
+            const sheetURL = studentDatabase[activeStudent];
+            document.getElementById('display-name').innerText = "Hello, " + activeStudent.charAt(0).toUpperCase() + activeStudent.slice(1);
             
             try {
                 const res = await fetch(sheetURL);
                 const text = await res.text();
                 const rows = text.split(/\r?\n/);
-                allData = {};
+                rawData = {};
                 rows.forEach((row, i) => {
                     if (i === 0) return;
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
@@ -147,41 +159,101 @@
                         const term = cols[0].replace(/"/g, "").trim();
                         const def = cols[1].replace(/"/g, "").trim();
                         const cat = (cols[2] && cols[2].trim() !== "") ? cols[2].replace(/"/g, "").trim() : "General";
-                        if (!allData[cat]) allData[cat] = [];
-                        allData[cat].push({ term, def });
+                        if (!rawData[cat]) rawData[cat] = [];
+                        rawData[cat].push({ term, def });
                     }
                 });
                 populateDropdown();
-            } catch (e) { alert("Error loading student data."); }
+            } catch (e) { alert("Error loading data."); }
         }
 
-        // 2. AUDIO LOGIC
-        function speakWord(event) {
-            event.stopPropagation(); // Prevents the card from flipping when clicking the speaker
-            const word = document.getElementById('word-display').innerText;
-            const utterance = new SpeechSynthesisUtterance(word);
-            utterance.lang = 'en-US'; // You can change this to 'en-GB' or others
-            utterance.rate = 0.9;     // Slightly slower for learning
-            window.speechSynthesis.speak(utterance);
+        // --- 3. FILTERING & MASTERY ---
+        function getWordsToStudy() {
+            if (!rawData[currentLessonName]) return [];
+            // Only return words NOT in the masteredList
+            return rawData[currentLessonName].filter(item => !masteredList.includes(item.term));
         }
 
-        // --- CORE FUNCTIONS ---
+        function markAsMastered() {
+            const currentWords = getWordsToStudy();
+            if (currentWords.length === 0) return;
+
+            const word = currentWords[currentIndex].term;
+            masteredList.push(word);
+            
+            // Save to browser memory
+            localStorage.setItem('mastered_' + activeStudent, JSON.stringify(masteredList));
+            
+            updateStats();
+            nextWord(); // Skip to the next word
+        }
+
+        function resetMastery() {
+            if (confirm("Reset all progress for " + activeStudent + "?")) {
+                masteredList = [];
+                localStorage.removeItem('mastered_' + activeStudent);
+                updateStats();
+                updateFlashcard();
+            }
+        }
+
+        function updateStats() {
+            const left = getWordsToStudy().length;
+            document.getElementById('progress-stats').innerText = `Words left in this lesson: ${left}`;
+        }
+
+        // --- 4. NAVIGATION & MODES ---
         function populateDropdown() {
             const select = document.getElementById('lesson-select');
             select.innerHTML = "";
-            Object.keys(allData).forEach(name => {
+            Object.keys(rawData).forEach(name => {
                 const opt = document.createElement('option');
                 opt.value = name; opt.innerText = name;
                 select.appendChild(opt);
             });
-            changeLesson(Object.keys(allData)[0]);
+            changeLesson(Object.keys(rawData)[0]);
         }
 
         function changeLesson(name) {
             currentLessonName = name;
             currentIndex = 0;
+            updateStats();
             updateFlashcard();
             if (!document.getElementById('match-mode').classList.contains('hidden')) setupMatchingGame();
+        }
+
+        function updateFlashcard() {
+            const words = getWordsToStudy();
+            const card = document.getElementById('flashcard');
+            card.classList.remove('is-flipped');
+
+            setTimeout(() => {
+                if (words.length > 0) {
+                    const item = words[currentIndex % words.length];
+                    document.getElementById('word-display').innerText = item.term;
+                    document.getElementById('definition-display').innerText = item.def;
+                } else {
+                    document.getElementById('word-display').innerText = "Done! 🏆";
+                    document.getElementById('definition-display').innerText = "All words mastered in this lesson.";
+                }
+            }, 200);
+        }
+
+        function nextWord() {
+            const words = getWordsToStudy();
+            if (words.length > 0) {
+                currentIndex = (currentIndex + 1) % words.length;
+            }
+            updateFlashcard();
+        }
+
+        // --- 5. AUDIO & MATCHING ---
+        function speakWord(event) {
+            event.stopPropagation();
+            const word = document.getElementById('word-display').innerText;
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = 'en-US';
+            window.speechSynthesis.speak(utterance);
         }
 
         function showMode(mode) {
@@ -193,38 +265,27 @@
         }
 
         function flipCard() { document.getElementById('flashcard').classList.toggle('is-flipped'); }
-        function nextWord() {
-            currentIndex = (currentIndex + 1) % allData[currentLessonName].length;
-            updateFlashcard();
-        }
-        function shuffleCurrentLesson() {
-            allData[currentLessonName].sort(() => Math.random() - 0.5);
-            currentIndex = 0;
-            updateFlashcard();
-        }
-        function updateFlashcard() {
-            document.getElementById('flashcard').classList.remove('is-flipped');
-            setTimeout(() => {
-                const item = allData[currentLessonName][currentIndex];
-                document.getElementById('word-display').innerText = item.term;
-                document.getElementById('definition-display').innerText = item.def;
-            }, 200);
-        }
 
         function setupMatchingGame() {
             const grid = document.getElementById('game-grid');
             grid.innerHTML = '';
-            selectedTile = null;
-            matchesFound = 0;
-            let lessonWords = allData[currentLessonName];
-            targetMatches = Math.min(lessonWords.length, 6);
-            let pool = [...lessonWords].sort(() => 0.5 - Math.random()).slice(0, targetMatches);
+            const words = getWordsToStudy();
+            const targetCount = Math.min(words.length, 6);
+            
+            if (targetCount === 0) {
+                grid.innerHTML = "<p>No words left to match!</p>";
+                return;
+            }
+
+            let pool = [...words].sort(() => 0.5 - Math.random()).slice(0, targetCount);
             let tiles = [];
             pool.forEach((item, i) => {
                 tiles.push({ text: item.term, id: i, type: 't' });
                 tiles.push({ text: item.def, id: i, type: 'd' });
             });
             tiles.sort(() => 0.5 - Math.random());
+            let localMatches = 0;
+
             tiles.forEach(data => {
                 const div = document.createElement('div');
                 div.className = 'tile';
@@ -238,8 +299,8 @@
                         if (selectedTile.data.id === data.id && selectedTile.data.type !== data.type) {
                             div.classList.add('matched');
                             selectedTile.div.classList.add('matched');
-                            matchesFound++;
-                            if (matchesFound === targetMatches) {
+                            localMatches++;
+                            if (localMatches === targetCount) {
                                 setTimeout(() => { document.getElementById('success-overlay').classList.remove('hidden'); }, 500);
                             }
                         } else { selectedTile.div.classList.remove('selected'); }
@@ -254,6 +315,16 @@
             document.getElementById('success-overlay').classList.add('hidden');
             setupMatchingGame();
         }
+
+        // AUTO-LOGIN FROM URL
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            const user = params.get('user');
+            if (user && studentDatabase[user.toLowerCase()]) {
+                document.getElementById('login-id').value = user;
+                handleLogin();
+            }
+        };
     </script>
 </body>
 </html>
