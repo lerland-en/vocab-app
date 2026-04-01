@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vocab Master Pro</title>
     <style>
-        :root { --primary: #007bff; --success: #28a745; --bg: #f8f9fa; --dark: #343a40; }
+        :root { --primary: #007bff; --success: #28a745; --bg: #f8f9fa; --dark: #343a40; --secondary: #6c757d; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
         
         /* LOGIN OVERLAY */
@@ -18,7 +18,7 @@
 
         /* HEADER & STATS */
         .setup-area { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 90%; max-width: 400px; margin-bottom: 15px; text-align: center; }
-        select { width: 100%; padding: 10px; border-radius: 8px; border: 2px solid var(--primary); font-size: 16px; margin-top: 5px; }
+        select { width: 100%; padding: 10px; border-radius: 8px; border: 2px solid var(--primary); font-size: 16px; margin-top: 5px; cursor: pointer; }
         .stats-text { font-size: 13px; color: #666; margin-top: 10px; font-weight: bold; }
 
         .nav { margin-bottom: 15px; display: flex; gap: 8px; }
@@ -42,21 +42,22 @@
         .speaker-btn { background: #eee; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; margin-top: 15px; font-size: 20px; }
 
         /* BUTTONS */
-        .controls { display: flex; gap: 10px; justify-content: center; width: 100%; max-width: 400px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; }
+        .controls { display: flex; gap: 8px; justify-content: center; width: 100%; max-width: 420px; }
+        .btn { flex: 1; padding: 12px 5px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; font-size: 13px; }
         .btn-next { background: var(--primary); }
         .btn-master { background: var(--success); }
-        .btn-reset { background: transparent; color: #999; font-size: 11px; margin-top: 10px; text-decoration: underline; }
+        .btn-shuffle { background: var(--secondary); }
+        .btn-reset { background: transparent; color: #999; font-size: 11px; margin-top: 10px; text-decoration: underline; cursor: pointer; border:none; }
 
-        /* GRID */
+        /* MATCHING GRID */
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 500px; width: 100%; }
-        .tile { padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; text-align: center; font-size: 13px; min-height: 65px; display: flex; align-items: center; justify-content: center; }
+        .tile { padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; text-align: center; font-size: 13px; min-height: 70px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .tile.selected { border-color: var(--primary); background: #e7f1ff; }
         .tile.matched { opacity: 0; pointer-events: none; }
 
         #success-overlay {
             position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(40,167,69,0.95);
-            color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000;
+            color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; text-align:center;
         }
     </style>
 </head>
@@ -74,7 +75,7 @@
     <div id="success-overlay" class="hidden">
         <h1>🎉 Excellent!</h1>
         <p>You matched all current words!</p>
-        <button class="btn" style="background: white; color: var(--success); max-width: 200px;" onclick="closeSuccess()">Play Again</button>
+        <button class="btn" style="background: white; color: var(--success); width: 180px;" onclick="closeSuccess()">Play Again</button>
     </div>
 
     <div class="setup-area">
@@ -101,19 +102,20 @@
         </div>
         <div class="controls">
             <button class="btn btn-master" onclick="markAsMastered()">Mastered ✅</button>
+            <button class="btn btn-shuffle" onclick="shuffleCurrentLesson()">Shuffle 🔀</button>
             <button class="btn btn-next" onclick="nextWord()">Next →</button>
         </div>
     </div>
 
     <div id="match-mode" class="hidden">
         <div class="grid" id="game-grid"></div>
-        <button class="btn" style="margin-top:15px; width:100%; max-width:400px; background:#6c757d" onclick="setupMatchingGame()">New Game</button>
+        <button class="btn btn-shuffle" style="margin-top:15px; width:100%; max-width:400px;" onclick="setupMatchingGame()">New Game 🔄</button>
     </div>
 
     <script>
         // --- 1. STUDENT DATABASE ---
-        // ADD YOUR NEW LINKS HERE
-       const studentDatabase = {
+        // !!! PASTE YOUR RECENT STUDENT LIST AND LINKS HERE !!!
+        const studentDatabase = {
             "john": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS--AB3xRXgEY6Pw6_KCz43YUo2cbBZskowBoUNZ7ruPS9N2dAT-4fvDaJPYGllWWNjSSfMZ4VspCGU/pub?output=csv",
             "vlada": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS--AB3xRXgEY6Pw6_KCz43YUo2cbBZskowBoUNZ7ruPS9N2dAT-4fvDaJPYGllWWNjSSfMZ4VspCGU/pub?gid=997411355&single=true&output=csv",
             "karina": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS--AB3xRXgEY6Pw6_KCz43YUo2cbBZskowBoUNZ7ruPS9N2dAT-4fvDaJPYGllWWNjSSfMZ4VspCGU/pub?output=csv",
@@ -125,6 +127,7 @@
         let currentIndex = 0;
         let activeStudent = "";
         let masteredList = [];
+        let selectedTile = null;
 
         // --- 2. LOGIN & STORAGE ---
         function handleLogin() {
@@ -132,11 +135,8 @@
             if (studentDatabase[id]) {
                 activeStudent = id;
                 document.getElementById('login-overlay').classList.add('hidden');
-                
-                // Load this specific student's mastered words
                 const saved = localStorage.getItem('mastered_' + activeStudent);
                 masteredList = saved ? JSON.parse(saved) : [];
-                
                 init();
             } else {
                 document.getElementById('login-error').classList.remove('hidden');
@@ -153,7 +153,7 @@
                 const rows = text.split(/\r?\n/);
                 rawData = {};
                 rows.forEach((row, i) => {
-                    if (i === 0) return;
+                    if (i === 0 || row.trim() === "") return;
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                     if (cols.length >= 2) {
                         const term = cols[0].replace(/"/g, "").trim();
@@ -164,28 +164,31 @@
                     }
                 });
                 populateDropdown();
-            } catch (e) { alert("Error loading data."); }
+            } catch (e) { alert("Error loading data from Google."); }
         }
 
-        // --- 3. FILTERING & MASTERY ---
+        // --- 3. FILTERING & SHUFFLE ---
         function getWordsToStudy() {
             if (!rawData[currentLessonName]) return [];
-            // Only return words NOT in the masteredList
             return rawData[currentLessonName].filter(item => !masteredList.includes(item.term));
         }
 
-        function markAsMastered() {
-            const currentWords = getWordsToStudy();
-            if (currentWords.length === 0) return;
+        function shuffleCurrentLesson() {
+            if (!rawData[currentLessonName]) return;
+            // Shuffling the source for this session
+            rawData[currentLessonName].sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            updateFlashcard();
+        }
 
-            const word = currentWords[currentIndex].term;
+        function markAsMastered() {
+            const words = getWordsToStudy();
+            if (words.length === 0) return;
+            const word = words[currentIndex % words.length].term;
             masteredList.push(word);
-            
-            // Save to browser memory
             localStorage.setItem('mastered_' + activeStudent, JSON.stringify(masteredList));
-            
             updateStats();
-            nextWord(); // Skip to the next word
+            nextWord();
         }
 
         function resetMastery() {
@@ -202,16 +205,17 @@
             document.getElementById('progress-stats').innerText = `Words left in this lesson: ${left}`;
         }
 
-        // --- 4. NAVIGATION & MODES ---
+        // --- 4. NAVIGATION ---
         function populateDropdown() {
             const select = document.getElementById('lesson-select');
             select.innerHTML = "";
-            Object.keys(rawData).forEach(name => {
+            const keys = Object.keys(rawData);
+            keys.forEach(name => {
                 const opt = document.createElement('option');
                 opt.value = name; opt.innerText = name;
                 select.appendChild(opt);
             });
-            changeLesson(Object.keys(rawData)[0]);
+            if (keys.length > 0) changeLesson(keys[0]);
         }
 
         function changeLesson(name) {
@@ -224,36 +228,32 @@
 
         function updateFlashcard() {
             const words = getWordsToStudy();
-            const card = document.getElementById('flashcard');
-            card.classList.remove('is-flipped');
-
+            document.getElementById('flashcard').classList.remove('is-flipped');
             setTimeout(() => {
                 if (words.length > 0) {
                     const item = words[currentIndex % words.length];
                     document.getElementById('word-display').innerText = item.term;
                     document.getElementById('definition-display').innerText = item.def;
                 } else {
-                    document.getElementById('word-display').innerText = "Done! 🏆";
-                    document.getElementById('definition-display').innerText = "All words mastered in this lesson.";
+                    document.getElementById('word-display').innerText = "All Mastered! 🏆";
+                    document.getElementById('definition-display').innerText = "Try another lesson or reset.";
                 }
             }, 200);
         }
 
         function nextWord() {
             const words = getWordsToStudy();
-            if (words.length > 0) {
-                currentIndex = (currentIndex + 1) % words.length;
-            }
+            if (words.length > 0) currentIndex = (currentIndex + 1) % words.length;
             updateFlashcard();
         }
 
-        // --- 5. AUDIO & MATCHING ---
+        // --- 5. AUDIO & MODES ---
         function speakWord(event) {
             event.stopPropagation();
             const word = document.getElementById('word-display').innerText;
-            const utterance = new SpeechSynthesisUtterance(word);
-            utterance.lang = 'en-US';
-            window.speechSynthesis.speak(utterance);
+            const ut = new SpeechSynthesisUtterance(word);
+            ut.lang = 'en-US';
+            window.speechSynthesis.speak(ut);
         }
 
         function showMode(mode) {
@@ -266,17 +266,17 @@
 
         function flipCard() { document.getElementById('flashcard').classList.toggle('is-flipped'); }
 
+        // --- 6. MATCHING LOGIC ---
         function setupMatchingGame() {
             const grid = document.getElementById('game-grid');
             grid.innerHTML = '';
+            selectedTile = null;
             const words = getWordsToStudy();
             const targetCount = Math.min(words.length, 6);
-            
             if (targetCount === 0) {
-                grid.innerHTML = "<p>No words left to match!</p>";
+                grid.innerHTML = "<p style='grid-column: 1/3'>No words left to match!</p>";
                 return;
             }
-
             let pool = [...words].sort(() => 0.5 - Math.random()).slice(0, targetCount);
             let tiles = [];
             pool.forEach((item, i) => {
@@ -284,8 +284,7 @@
                 tiles.push({ text: item.def, id: i, type: 'd' });
             });
             tiles.sort(() => 0.5 - Math.random());
-            let localMatches = 0;
-
+            let matchedInSession = 0;
             tiles.forEach(data => {
                 const div = document.createElement('div');
                 div.className = 'tile';
@@ -296,11 +295,16 @@
                         selectedTile = { div, data };
                         div.classList.add('selected');
                     } else {
+                        if (selectedTile.div === div) {
+                            div.classList.remove('selected');
+                            selectedTile = null;
+                            return;
+                        }
                         if (selectedTile.data.id === data.id && selectedTile.data.type !== data.type) {
                             div.classList.add('matched');
                             selectedTile.div.classList.add('matched');
-                            localMatches++;
-                            if (localMatches === targetCount) {
+                            matchedInSession++;
+                            if (matchedInSession === targetCount) {
                                 setTimeout(() => { document.getElementById('success-overlay').classList.remove('hidden'); }, 500);
                             }
                         } else { selectedTile.div.classList.remove('selected'); }
@@ -316,7 +320,6 @@
             setupMatchingGame();
         }
 
-        // AUTO-LOGIN FROM URL
         window.onload = function() {
             const params = new URLSearchParams(window.location.search);
             const user = params.get('user');
