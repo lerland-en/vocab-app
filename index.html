@@ -28,15 +28,15 @@
         .is-flipped { transform: rotateY(180deg); }
         .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 25px; border-radius: 15px; box-shadow: 0 6px 12px rgba(0,0,0,0.1); border: 2px solid #fff; box-sizing: border-box; }
         .card-front { background: white; color: var(--primary); font-size: 26px; font-weight: bold; }
-        .card-back { background: var(--primary); color: white; transform: rotateY(180deg); font-size: 18px; }
+        .card-back { background: var(--primary); color: white; transform: rotateY(180deg); font-size: 18px; text-align: center; }
 
         /* SENTENCE TASKS */
-        .sentence-area { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center; }
+        .sentence-area { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center; transition: 0.3s; }
         .sentence-text { font-size: 18px; line-height: 1.6; margin-bottom: 20px; }
-        .gap { display: inline-block; min-width: 80px; border-bottom: 2px solid var(--primary); padding: 0 5px; color: var(--primary); font-weight: bold; }
+        .gap { display: inline-block; min-width: 80px; border-bottom: 2px solid var(--primary); padding: 0 5px; color: var(--primary); font-weight: bold; transition: color 0.3s; }
         .word-bank { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
-        .bank-word { background: white; border: 2px solid var(--primary); padding: 8px 15px; border-radius: 10px; cursor: pointer; color: var(--primary); font-weight: bold; }
-        .type-input { border: none; border-bottom: 2px solid var(--primary); font-size: 18px; text-align: center; width: 120px; outline: none; color: var(--primary); }
+        .bank-word { background: white; border: 2px solid var(--primary); padding: 8px 15px; border-radius: 10px; cursor: pointer; color: var(--primary); font-weight: bold; transition: 0.2s; }
+        .type-input { border: none; border-bottom: 2px solid var(--primary); font-size: 18px; text-align: center; width: 120px; outline: none; color: var(--primary); transition: background-color 0.3s; }
 
         /* GENERAL UI */
         .controls { display: flex; gap: 8px; justify-content: center; width: 100%; max-width: 420px; }
@@ -44,9 +44,10 @@
         .btn-next { background: var(--primary); }
         .btn-master { background: var(--success); }
         .btn-shuffle { background: var(--secondary); }
+        .btn-reset { background: transparent; color: #999; font-size: 11px; margin-top: 10px; text-decoration: underline; cursor: pointer; border: none; }
         
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 500px; width: 100%; }
-        .tile { padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; text-align: center; font-size: 13px; min-height: 70px; display: flex; align-items: center; justify-content: center; }
+        .tile { padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; text-align: center; font-size: 13px; min-height: 70px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .tile.matched { opacity: 0; pointer-events: none; }
         #success-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(40,167,69,0.95); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; text-align:center; }
     </style>
@@ -64,7 +65,7 @@
 
     <div id="success-overlay" class="hidden">
         <h1>🎉 Excellent!</h1>
-        <p id="success-msg">Task Complete!</p>
+        <p>You matched all current words!</p>
         <button class="btn" style="background: white; color: var(--success); width: 180px;" onclick="closeSuccess()">Next Word</button>
     </div>
 
@@ -72,6 +73,7 @@
         <h3 id="display-name" style="margin:0">Welcome</h3>
         <select id="lesson-select" onchange="changeLesson(this.value)"></select>
         <div id="progress-stats" style="font-size:12px; color:#666; margin-top:5px; font-weight:bold;">Words left: 0</div>
+        <button class="btn-reset" onclick="resetMastery()">Reset Mastered Words 🔄</button>
     </div>
 
     <div class="nav">
@@ -96,7 +98,7 @@
     </div>
 
     <div id="sentence-mode" class="mode-container hidden">
-        <div class="sentence-area">
+        <div class="sentence-area" id="main-sentence-area">
             <div id="sentence-display" class="sentence-text"></div>
             <div id="drag-bank" class="word-bank hidden"></div>
             <div id="type-area" class="hidden">
@@ -144,7 +146,8 @@
 
         async function init() {
             const sheetURL = studentDatabase[activeStudent];
-            document.getElementById('display-name').innerText = "Student: " + activeStudent.toUpperCase();
+            document.getElementById('display-name').innerText = "Hello, " + activeStudent.charAt(0).toUpperCase() + activeStudent.slice(1);
+            
             try {
                 const res = await fetch(sheetURL);
                 const text = await res.text();
@@ -175,7 +178,7 @@
             currentMode = mode;
             document.querySelectorAll('.mode-container').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
-            document.getElementById('nav-' + (mode === 'drag' || mode === 'type' ? mode : mode)).classList.add('active');
+            document.getElementById('nav-' + mode).classList.add('active');
 
             if (mode === 'flash') document.getElementById('flash-mode').classList.remove('hidden');
             if (mode === 'match') { document.getElementById('match-mode').classList.remove('hidden'); setupMatchingGame(); }
@@ -183,7 +186,16 @@
             updateFlashcard();
         }
 
-        // --- SENTENCE TASK LOGIC ---
+        function resetMastery() {
+            if (confirm("Reset all mastered words for " + activeStudent + "?")) {
+                masteredList = [];
+                localStorage.removeItem('mastered_' + activeStudent);
+                updateStats();
+                updateFlashcard();
+            }
+        }
+
+        // --- UPDATED SENTENCE TASK LOGIC ---
         function setupSentenceTask() {
             const words = getWordsToStudy().filter(w => w.sent !== "");
             const display = document.getElementById('sentence-display');
@@ -191,7 +203,7 @@
             const typeArea = document.getElementById('type-area');
             
             if (words.length === 0) {
-                display.innerText = "No sentences found for this lesson. Add some in Column D of your Google Sheet!";
+                display.innerText = "No sentences found. Add sentences in Column D of your Sheet!";
                 bank.classList.add('hidden'); typeArea.classList.add('hidden');
                 return;
             }
@@ -202,7 +214,6 @@
             if (currentMode === 'drag') {
                 bank.classList.remove('hidden'); typeArea.classList.add('hidden');
                 bank.innerHTML = "";
-                // Create a small pool of options
                 let options = [item.term];
                 const others = getWordsToStudy().filter(w => w.term !== item.term).sort(() => 0.5 - Math.random()).slice(0, 2);
                 others.forEach(o => options.push(o.term));
@@ -214,16 +225,23 @@
                     btn.innerText = opt;
                     btn.onclick = () => {
                         if (opt === item.term) { 
+                            // CORRECT ANSWER
                             document.getElementById('the-gap').innerText = opt;
                             document.getElementById('the-gap').style.color = "var(--success)";
-                            setTimeout(() => { document.getElementById('success-overlay').classList.remove('hidden'); }, 400);
-                        } else { btn.style.borderColor = "red"; setTimeout(() => btn.style.borderColor = "var(--primary)", 500); }
+                            // Auto-advance after 800ms
+                            setTimeout(() => { nextWord(); }, 800);
+                        } else { 
+                            // WRONG ANSWER
+                            btn.style.borderColor = "red"; 
+                            setTimeout(() => btn.style.borderColor = "var(--primary)", 500); 
+                        }
                     };
                     bank.appendChild(btn);
                 });
             } else {
                 bank.classList.add('hidden'); typeArea.classList.remove('hidden');
                 document.getElementById('blank-input').value = "";
+                document.getElementById('blank-input').style.backgroundColor = "white";
                 document.getElementById('blank-input').focus();
             }
         }
@@ -231,13 +249,19 @@
         function checkTypeAnswer() {
             const words = getWordsToStudy().filter(w => w.sent !== "");
             const item = words[currentIndex % words.length];
-            const val = document.getElementById('blank-input').value.trim().toLowerCase();
+            const inputEl = document.getElementById('blank-input');
+            const val = inputEl.value.trim().toLowerCase();
+            
             if (val === item.term.toLowerCase()) {
+                // CORRECT
                 document.getElementById('the-gap').innerText = item.term;
-                document.getElementById('success-overlay').classList.remove('hidden');
+                document.getElementById('the-gap').style.color = "var(--success)";
+                inputEl.style.backgroundColor = "#d4edda"; // Light green background
+                setTimeout(() => { nextWord(); }, 800);
             } else {
-                document.getElementById('blank-input').style.backgroundColor = "#ffcccc";
-                setTimeout(() => document.getElementById('blank-input').style.backgroundColor = "white", 500);
+                // WRONG
+                inputEl.style.backgroundColor = "#f8d7da"; // Light red
+                setTimeout(() => inputEl.style.backgroundColor = "white", 500);
             }
         }
 
@@ -250,6 +274,7 @@
         }
         function updateStats() { document.getElementById('progress-stats').innerText = `Words left: ${getWordsToStudy().length}`; }
         function nextWord() { const w = getWordsToStudy(); if (w.length > 0) currentIndex = (currentIndex + 1) % w.length; updateFlashcard(); if (currentMode !== 'flash' && currentMode !== 'match') setupSentenceTask(); }
+        
         function updateFlashcard() {
             const w = getWordsToStudy(); document.getElementById('flashcard').classList.remove('is-flipped');
             setTimeout(() => {
@@ -266,9 +291,9 @@
             updateStats(); nextWord();
         }
         function speakWord(e) { e.stopPropagation(); const ut = new SpeechSynthesisUtterance(document.getElementById('word-display').innerText); window.speechSynthesis.speak(ut); }
-        function closeSuccess() { document.getElementById('success-overlay').classList.add('hidden'); nextWord(); }
+        function closeSuccess() { document.getElementById('success-overlay').classList.add('hidden'); setupMatchingGame(); }
         function flipCard() { document.getElementById('flashcard').classList.toggle('is-flipped'); }
-        function shuffleCurrentLesson() { rawData[currentLessonName].sort(() => Math.random() - 0.5); currentIndex = 0; updateFlashcard(); }
+        function shuffleCurrentLesson() { if (rawData[currentLessonName]) { rawData[currentLessonName].sort(() => Math.random() - 0.5); currentIndex = 0; updateFlashcard(); } }
 
         // MATCHING GAME
         function setupMatchingGame() {
